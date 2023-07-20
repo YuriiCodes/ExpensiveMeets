@@ -16,21 +16,22 @@ function initializeScriptProperties() {
 }
 
 
-function mapCostToNDASymbol(cost) {
-    // if cost is less than 100, then return 1
-    if (cost < 100) {
+function mapCostToNDASymbol(cost, threshold) {
+    // if cost is less than first th, then return 1
+    if (cost < threshold["$"]) {
         return "$"
     }
     // if cost is less than 1000, then return 2
-    if (cost < 1000) {
+    if (cost < threshold["$$"]) {
+        Logger.log(threshold["$$"])
         return "$$"
     }
     // if cost is less than 10000, then return 3
-    if (cost < 10000) {
+    if (cost < threshold["$$$"]) {
         return "$$$"
     }
     // if cost is less than 100000, then return 4
-    if (cost < 100000) {
+    if (cost < threshold["$$$$"]) {
         return "$$$$"
     }
 }
@@ -56,6 +57,16 @@ function updateCalendarEvents() {
         var rate = values[i][1];
         hourlyRates[email] = rate;
     }
+
+    // parse values from Google table, via specific format
+    var threshold = {
+        "$": values[1][3] || 100,
+        "$$": values[1][4] || 1000,
+        "$$$": values[1][5] || 10000,
+        "$$$$": values[1][6] ||10000,
+    }
+
+    Logger.log(threshold)
 
     // Get the calendar and its events
     var calendar = CalendarApp.getDefaultCalendar(); // adjust if you're not using the default calendar
@@ -92,7 +103,7 @@ function updateCalendarEvents() {
 
         // Add new cost estimate based on NDA_MODE
         if (NDAMode) {
-            description += "\n💰 Estimated Meeting Cost is " + mapCostToNDASymbol(cost);
+            description += "\n💰 Estimated Meeting Cost is " + mapCostToNDASymbol(cost, threshold);
         } else {
             description += "\n💰 Estimated Meeting Cost is $" + cost;
         }
