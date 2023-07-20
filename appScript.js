@@ -9,6 +9,30 @@ function initializeScriptProperties() {
     if (scriptProperties.getProperty("NUM_OF_DAYS_AHEAD_TO_SET_COSTS") === null) {
         scriptProperties.setProperty('NUM_OF_DAYS_AHEAD_TO_SET_COSTS', 7);
     }
+
+    if (scriptProperties.getProperty("NDA_MODE") === null) {
+        scriptProperties.setProperty('NDA_MODE', true);
+    }
+}
+
+
+function mapCostToNDASymbol(cost) {
+    // if cost is less than 100, then return 1
+    if (cost < 100) {
+        return "$"
+    }
+    // if cost is less than 1000, then return 2
+    if (cost < 1000) {
+        return "$$"
+    }
+    // if cost is less than 10000, then return 3
+    if (cost < 10000) {
+        return "$$$"
+    }
+    // if cost is less than 100000, then return 4
+    if (cost < 100000) {
+        return "$$$$"
+    }
 }
 
 function updateCalendarEvents() {
@@ -16,6 +40,7 @@ function updateCalendarEvents() {
 
     var spreadsheetId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
     var numOfDays = PropertiesService.getScriptProperties().getProperty("NUM_OF_DAYS_AHEAD_TO_SET_COSTS");
+    var NDAMode = PropertiesService.getScriptProperties().getProperty("NDA_MODE");
     // Open the spreadsheet using its ID
     var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
 
@@ -26,7 +51,7 @@ function updateCalendarEvents() {
 
     // Transform the sheet data into a JavaScript object for easier lookup
     var hourlyRates = {};
-    for (var i = 0; i < values.length; i++) {
+    for (var i = 1; i < values.length; i++) {
         var email = values[i][0];
         var rate = values[i][1];
         hourlyRates[email] = rate;
@@ -65,8 +90,12 @@ function updateCalendarEvents() {
         // Remove old cost estimates
         description = description.replace(costRegex, "");
 
-        // Add new cost estimate
-        description += "\n💰 Estimated Meeting Cost is $" + cost;
+        // Add new cost estimate based on NDA_MODE
+        if (NDAMode) {
+            description += "\n💰 Estimated Meeting Cost is " + mapCostToNDASymbol(cost);
+        } else {
+            description += "\n💰 Estimated Meeting Cost is $" + cost;
+        }
 
         event.setDescription(description);
     }
