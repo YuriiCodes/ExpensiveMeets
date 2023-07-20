@@ -2,8 +2,12 @@ function initializeScriptProperties() {
     var scriptProperties = PropertiesService.getScriptProperties();
 
 // initialize just in the case when it's uninitialized before
-    if (PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID") === null) {
+    if (scriptProperties.getProperty("SPREADSHEET_ID") === null) {
         scriptProperties.setProperty('SPREADSHEET_ID', '1UR5xoOOQIlx-Ya8CAQ8PiiRGSf8CNCSnWSN_ApVGf3s');
+    }
+
+    if (scriptProperties.getProperty("NUM_OF_DAYS_AHEAD_TO_SET_COSTS") === null) {
+        scriptProperties.setProperty('NUM_OF_DAYS_AHEAD_TO_SET_COSTS', 7);
     }
 }
 
@@ -11,6 +15,7 @@ function updateCalendarEvents() {
     initializeScriptProperties()
 
     var spreadsheetId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
+    var numOfDays = PropertiesService.getScriptProperties().getProperty("NUM_OF_DAYS_AHEAD_TO_SET_COSTS");
     // Open the spreadsheet using its ID
     var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
 
@@ -30,7 +35,7 @@ function updateCalendarEvents() {
     // Get the calendar and its events
     var calendar = CalendarApp.getDefaultCalendar(); // adjust if you're not using the default calendar
     var now = new Date();
-    var events = calendar.getEvents(now, new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000))); // adjust the period
+    var events = calendar.getEvents(now, new Date(now.getTime() + (numOfDays * 24 * 60 * 60 * 1000))); // adjust the period
 
     // Prepare the regex to remove old cost estimates
     var costRegex = /\n(💰 )?Estimated Meeting Cost is \$\d+/g;
