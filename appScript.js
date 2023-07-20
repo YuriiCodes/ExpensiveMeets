@@ -1,6 +1,18 @@
+function initializeScriptProperties() {
+    var scriptProperties = PropertiesService.getScriptProperties();
+
+// initialize just in the case when it's uninitialized before
+    if (PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID") === null) {
+        scriptProperties.setProperty('SPREADSHEET_ID', '1UR5xoOOQIlx-Ya8CAQ8PiiRGSf8CNCSnWSN_ApVGf3s');
+    }
+}
+
 function updateCalendarEvents() {
+    initializeScriptProperties()
+
+    var spreadsheetId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
     // Open the spreadsheet using its ID
-    var spreadsheet = SpreadsheetApp.openById('1wWFSIBsSSTaO08DZBEkceBUNaFMcHS85xES8NdJHQgE');
+    var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
 
     // Select the sheet and get its data
     var sheet = spreadsheet.getSheets()[0]; // adjust if your data is in another sheet
@@ -28,7 +40,9 @@ function updateCalendarEvents() {
         var event = events[j];
 
         // Calculate the event cost
-        var attendees = event.getGuestList().map(function(guest) { return guest.getEmail(); });
+        var attendees = event.getGuestList().map(function (guest) {
+            return guest.getEmail();
+        });
         var creators = event.getCreators();
         var allParticipants = attendees.concat(creators);
 
