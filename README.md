@@ -3,7 +3,9 @@
 ## Description
 Welcome to ExpensiveMeets, a fun and handy Google App Script application that evaluates the cost of your meetings based on the participants' hourly rates! 💼💵
 
-[Video Demo](https://www.loom.com/share/e32967da9b5b4d13a1c8651b19431c4b?sid=f71a4f34-8567-4411-83d2-f759d43647b6) 🎥🚀
+
+https://github.com/YuriiCodes/ExpensiveMeets/assets/96592769/e14cd954-f6e8-4d46-909e-f4dccdab3122
+
 
 ## Architecture:
 Expensive Meets uses Google App Script to create a web application that can be accessed via a URL. We use Google Spreadsheet as a data source for hourly rates of each worker. 🏢📊
