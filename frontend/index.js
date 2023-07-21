@@ -1,17 +1,26 @@
+function doGet() {
+    return HtmlService.createHtmlOutputFromFile('page.html');
+}
+
+function getUserEmail() {
+    return Session.getActiveUser().getEmail();
+}
+
+
 function initializeScriptProperties() {
     var scriptProperties = PropertiesService.getScriptProperties();
-
-// initialize just in the case when it's uninitialized before
-    if (scriptProperties.getProperty("SPREADSHEET_ID") === null) {
-        scriptProperties.setProperty('SPREADSHEET_ID', '1UR5xoOOQIlx-Ya8CAQ8PiiRGSf8CNCSnWSN_ApVGf3s');
-    }
 
     if (scriptProperties.getProperty("NUM_OF_DAYS_AHEAD_TO_SET_COSTS") === null) {
         scriptProperties.setProperty('NUM_OF_DAYS_AHEAD_TO_SET_COSTS', 7);
     }
 
     if (scriptProperties.getProperty("NDA_MODE") === null) {
-        scriptProperties.setProperty('NDA_MODE', true);
+        scriptProperties.setProperty('NDA_MODE', 1);
+    }
+
+    // DLA is a Data Access Layer, an API endpoint to get sensitive salary data that only service accoutn will have access to.
+    if (scriptProperties.getProperty("DLA_URL") === null) {
+        scriptProperties.setProperty('DLA_URL', "https://script.googleusercontent.com/a/macros/eliftech.com/echo?user_content_key=zCt7iDqfbOkoEfwHnxiePWiKCwx672NO57aP87gZSIwt8DvmAvnBdxMknQce-zh2lGtVijT2hz4qB89TvXu4w-1t_fcWKaV1OJmA1Yb3SEsKFZqtv3DaNYcMrmhZHmUMi80zadyHLKAx1hRXfeQWguOcN9X0s3gf68n4RAo2RJzdqWTPudKTQJKZjhasKpf0mCWX6brihSg86EDWLLWSYr7oow8T4WVauMWKU_O_LRqle1XBe2SmNYRbpTSy5GHEHh5BECxgFUvc_ScPTHfLrg&lib=MBy1XISyfOLgif5qWH7pJYS0HurfB97W1");
     }
 }
 
@@ -23,50 +32,52 @@ function mapCostToNDASymbol(cost, threshold) {
     }
     // if cost is less than 1000, then return 2
     if (cost < threshold["$$"]) {
-        Logger.log(threshold["$$"])
         return "$$"
     }
     // if cost is less than 10000, then return 3
     if (cost < threshold["$$$"]) {
         return "$$$"
     }
-    // if cost is less than 100000, then return 4
-    if (cost < threshold["$$$$"]) {
+    if (cost > threshold["$$$"])
+    {
         return "$$$$"
+    }
+    // if cost is less than 100000, then return 4
+    else {
+        return "Unknown error"
     }
 }
 
+function getSensitiveData() {
+    var dlaUrl = PropertiesService.getScriptProperties().getProperty("DLA_URL")
+    Logger.log("Fetching The DLA App: " + dlaUrl)
+    var response = UrlFetchApp.fetch(dlaUrl);
+    var data = JSON.parse(response.getContentText());
+    Logger.log("Fetched Data:" + data)
+    return data;
+}
+
+
 function updateCalendarEvents() {
     initializeScriptProperties()
-
-    var spreadsheetId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
     var numOfDays = PropertiesService.getScriptProperties().getProperty("NUM_OF_DAYS_AHEAD_TO_SET_COSTS");
-    var NDAMode = PropertiesService.getScriptProperties().getProperty("NDA_MODE");
-    // Open the spreadsheet using its ID
-    var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    Logger.log("Num Of Days Is: "+ numOfDays)
 
-    // Select the sheet and get its data
-    var sheet = spreadsheet.getSheets()[0]; // adjust if your data is in another sheet
-    var range = sheet.getDataRange();
-    var values = range.getValues();
+    var NDAMode = PropertiesService.getScriptProperties().getProperty("NDA_MODE") == 1 ? true : false;
+    Logger.log("NDA Mode is:" + NDAMode)
+
+    var data = getSensitiveData()
+
+
 
     // Transform the sheet data into a JavaScript object for easier lookup
-    var hourlyRates = {};
-    for (var i = 1; i < values.length; i++) {
-        var email = values[i][0];
-        var rate = values[i][1];
-        hourlyRates[email] = rate;
-    }
+    var hourlyRates = data.rates;
+    var threshold = data.threshold
 
-    // parse values from Google table, via specific format
-    var threshold = {
-        "$": values[1][3] || 100,
-        "$$": values[1][4] || 1000,
-        "$$$": values[1][5] || 10000,
-        "$$$$": values[1][6] ||10000,
-    }
 
-    Logger.log(threshold)
+    Logger.log("Loaded Hourly Rates: "+ hourlyRates)
+    Logger.log("Loaded Threshold: "+ threshold)
+
 
     // Get the calendar and its events
     var calendar = CalendarApp.getDefaultCalendar(); // adjust if you're not using the default calendar
@@ -74,7 +85,7 @@ function updateCalendarEvents() {
     var events = calendar.getEvents(now, new Date(now.getTime() + (numOfDays * 24 * 60 * 60 * 1000))); // adjust the period
 
     // Prepare the regex to remove old cost estimates
-    var costRegex = /\n(💰 )?Estimated Meeting Cost is \$\d+/g;
+    var costRegex = /\n(💰 )?Estimated Meeting Cost is (\$\d+|\$+)$/g;
 
     // Iterate over the events
     for (var j = 0; j < events.length; j++) {
@@ -86,6 +97,8 @@ function updateCalendarEvents() {
         });
         var creators = event.getCreators();
         var allParticipants = attendees.concat(creators);
+        Logger.log("All Participants:"+ allParticipants)
+
 
         var cost = 0;
         for (var k = 0; k < allParticipants.length; k++) {
@@ -101,7 +114,10 @@ function updateCalendarEvents() {
         // Remove old cost estimates
         description = description.replace(costRegex, "");
 
+        Logger.log("Overall meeting cost is $" + cost)
+
         // Add new cost estimate based on NDA_MODE
+        Logger.log(NDAMode)
         if (NDAMode) {
             description += "\n💰 Estimated Meeting Cost is " + mapCostToNDASymbol(cost, threshold);
         } else {
