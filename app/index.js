@@ -53,7 +53,7 @@ function getSensitiveData() {
     Logger.log("Fetching The DLA App: " + dlaUrl)
     var response = UrlFetchApp.fetch(dlaUrl);
     var data = JSON.parse(response.getContentText());
-    Logger.log("Fetched Data:" + data)
+    Logger.log("Fetched Data:" + JSON.stringify(data, null, 2))
     return data;
 }
 
@@ -68,16 +68,12 @@ function updateCalendarEvents() {
 
     var data = getSensitiveData()
 
-
-
     // Transform the sheet data into a JavaScript object for easier lookup
     var hourlyRates = data.rates;
     var threshold = data.threshold
 
-
-    Logger.log("Loaded Hourly Rates: "+ hourlyRates)
-    Logger.log("Loaded Threshold: "+ threshold)
-
+    Logger.log("Loaded Hourly Rates: "+ JSON.stringify(hourlyRates, null, 2))
+    Logger.log("Loaded Threshold: "+ JSON.stringify(threshold, null, 2))
 
     // Get the calendar and its events
     var calendar = CalendarApp.getDefaultCalendar(); // adjust if you're not using the default calendar
@@ -91,6 +87,13 @@ function updateCalendarEvents() {
     for (var j = 0; j < events.length; j++) {
         var event = events[j];
 
+        // Calculate the event duration in hours
+        var startTime = event.getStartTime();
+        var endTime = event.getEndTime();
+        var durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+
+        Logger.log("The overall meet duration is: " + durationHours)
+
         // Calculate the event cost
         var attendees = event.getGuestList().map(function (guest) {
             return guest.getEmail();
@@ -99,12 +102,11 @@ function updateCalendarEvents() {
         var allParticipants = attendees.concat(creators);
         Logger.log("All Participants:"+ allParticipants)
 
-
         var cost = 0;
         for (var k = 0; k < allParticipants.length; k++) {
             var participant = allParticipants[k];
             if (hourlyRates[participant]) {
-                cost += hourlyRates[participant];
+                cost += hourlyRates[participant] * durationHours;
             }
         }
 
@@ -117,7 +119,7 @@ function updateCalendarEvents() {
         Logger.log("Overall meeting cost is $" + cost)
 
         // Add new cost estimate based on NDA_MODE
-        Logger.log(NDAMode)
+
         if (NDAMode) {
             description += "\n💰 Estimated Meeting Cost is " + mapCostToNDASymbol(cost, threshold);
         } else {
@@ -127,3 +129,4 @@ function updateCalendarEvents() {
         event.setDescription(description);
     }
 }
+
